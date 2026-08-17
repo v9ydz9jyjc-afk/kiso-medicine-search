@@ -64,36 +64,156 @@ def discover_sources() -> Sources:
     now = datetime.now(JST)
     candidates = [now.year, now.year - 1]
     errors: list[str] = []
+
     for year in candidates:
         page_url = f"https://www.mhlw.go.jp/topics/{year}/04/tp{year}0401-01.html"
+
         try:
             response = get(page_url)
+
+            # requests側の文字コード判定がずれても日本語を正しく読む
+            if response.apparent_encoding:
+                response.encoding = response.apparent_encoding
+
             soup = BeautifulSoup(response.text, "html.parser")
-            title = clean(soup.find("h1").get_text(" ", strip=True) if soup.find("h1") else soup.title.string)
-            links = [(clean(a.get_text(" ", strip=True)), urljoin(page_url, a.get("href", ""))) for a in soup.find_all("a")]
 
-            change_url = next((url for text, url in links if "基礎的リスト" in text and "Excel" in text), "")
-            target_url = next((url for text, url in links if "基礎的医薬品対象品目リスト" in text), "")
+            h1 = soup.find("h1")
+            if h1:
+                title = clean(h1.get_text(" ", strip=True))
+            elif soup.title:
+                title = clean(soup.title.get_text(" ", strip=True))
+            else:
+                title = ""
+
+            links: list[tuple[str, str]] = []
+
+            for a in soup.find_all("a", href=True):
+                text = clean(a.get_text(" ", strip=True))
+                href = urljoin(page_url, a["href"])
+                links.append((text, href))
+
+            # デバッグ用：Actionsログで何を取得できたか確認可能
+            print(f"Checking source page: {page_url}")
+            print(f"Page title: {title}")
+            print(f"Found links: {len(links)}")
+
+            # -----------------------------
+            # 基礎的リスト Excel版
+            # -----------------------------
+            change_candidates = []
+
+            for text, url in links:
+                normalized_text = normalize(text)
+                lower_url = url.lower()
+
+                if "基礎的リスト" in normalized_text:
+                    score = 0
+
+                    if "excel" in normalized_text:
+                        score += 10
+
+                    if lower_url.endswith((".xlsx", ".xls")):
+                        score += 20
+
+                    # PDFを誤取得しない
+                    if lower_url.endswith(".pdf"):
+                        score -= 100
+
+                    change_candidates.append((score, text, url))
+
+            change_candidates.sort(reverse=True, key=lambda x: x[0])
+
+            change_url = (
+                change_candidates[0][2]
+                if change_candidates and change_candidates[0][0] >= 0
+                else ""
+            )
+
+            # -----------------------------
+            # 基礎的医薬品対象品目リスト
+            # -----------------------------
+            target_candidates = []
+
+            for text, url in links:
+                normalized_text = normalize(text)
+                lower_url = url.lower()
+
+                if (
+                    "基礎的医薬品対象品目リスト" in normalized_text
+                    or "基礎的医薬品対象品一覧" in normalized_text
+                ):
+                    score = 0
+
+                    if lower_url.endswith(".pdf"):
+                        score += 20
+
+                    if "pdf" in normalized_text:
+                        score += 10
+
+                    # ExcelよりPDFを優先
+                    if lower_url.endswith((".xlsx", ".xls")):
+                        score -= 10
+
+                    target_candidates.append((score, text, url))
+
+            target_candidates.sort(reverse=True, key=lambda x: x[0])
+
+            target_url = (
+                target_candidates[0][2]
+                if target_candidates
+                else ""
+            )
+
+            print(f"Detected change list: {change_url or 'NOT FOUND'}")
+            print(f"Detected target list: {target_url or 'NOT FOUND'}")
+
             if not change_url or not target_url:
-                raise RuntimeError("必要な資料リンクを検出できませんでした")
+                raise RuntimeError(
+                    "必要な資料リンクを検出できませんでした "
+                    f"(change={bool(change_url)}, target={bool(target_url)})"
+                )
 
-            match = re.search(r"令和\s*([0-9０-９]+)年\s*([0-9０-９]+)月\s*([0-9０-９]+)日", title)
+            # ページタイトルから適用日を取得
+            match = re.search(
+                r"令和\s*([0-9０-９]+)年\s*"
+                r"([0-9０-９]+)月\s*"
+                r"([0-9０-９]+)日",
+                title,
+            )
+
             applicable_date = ""
+
             if match:
-                era_year, month, day = [int(unicodedata.normalize("NFKC", x)) for x in match.groups()]
-                applicable_date = f"{era_year + 2018:04d}-{month:02d}-{day:02d}"
+                era_year, month, day = [
+                    int(unicodedata.normalize("NFKC", x))
+                    for x in match.groups()
+                ]
+
+                applicable_date = (
+                    f"{era_year + 2018:04d}-"
+                    f"{month:02d}-"
+                    f"{day:02d}"
+                )
+
             return Sources(
                 page_url=page_url,
                 page_title=title,
                 target_url=target_url,
                 change_url=change_url,
-                dataset_title=f"基礎的医薬品対象品目リスト（令和{year - 2018}年4月1日～）",
+                dataset_title=(
+                    f"基礎的医薬品対象品目リスト"
+                    f"（令和{year - 2018}年4月1日～）"
+                ),
                 applicable_date=applicable_date or f"{year}-04-01",
             )
+
         except Exception as exc:  # noqa: BLE001
             errors.append(f"{page_url}: {exc}")
-    raise RuntimeError("最新資料ページを特定できませんでした: " + " | ".join(errors))
 
+    raise RuntimeError(
+        "最新資料ページを特定できませんでした: "
+        + " | ".join(errors)
+    )
 
 def download(url: str, path: Path) -> None:
     response = get(url)
