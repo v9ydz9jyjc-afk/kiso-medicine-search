@@ -1,13 +1,14 @@
 {
   "dataset_title": "基礎的医薬品対象品目リスト（令和8年4月1日～）",
-  "change_list_title": "基礎的リスト（令和8年度）",
-  "applicable_date": "2026-04-01",
-  "source_page_title": "薬価基準収載品目リスト及び後発医薬品に関する情報について（令和8年8月1日適用）",
+  "change_list_title": "基礎的リスト",
+  "applicable_date": "2026-08-13",
+  "source_page_title": "薬価基準収載品目リスト及び後発医薬品に関する情報について（令和８年８月13日適用）",
   "source_page_url": "https://www.mhlw.go.jp/topics/2026/04/tp20260401-01.html",
   "source_target_url": "https://www.mhlw.go.jp/topics/2026/04/dl/tp2026_kiso_list.pdf",
   "source_change_url": "https://www.mhlw.go.jp/topics/2026/04/xls/tp2026_kiso.xlsx",
-  "generated_at": "2026-08-04T18:58:16+09:00",
+  "generated_at": "2026-08-18T06:03:59+09:00",
   "target_count": 1693,
   "change_count": 827,
+  "change_matched_count": 514,
   "status": "normal"
 }
