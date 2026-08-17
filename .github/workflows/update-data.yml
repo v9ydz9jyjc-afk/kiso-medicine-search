@@ -1,0 +1,69 @@
+name: Update medicine data
+
+on:
+  schedule:
+    - cron: "17 20 * * *" # 日本時間 05:17
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Update data
+        id: update
+        run: python scripts/update_data.py
+
+      - name: Commit changed data
+        run: |
+          if git diff --quiet -- data/; then
+            echo "No data changes"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/
+          git commit -m "chore: update MHLW data"
+          git push
+
+      - name: Close old failure issues
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const {data: issues} = await github.rest.issues.listForRepo({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              labels: 'data-update-failed'
+            });
+            for (const issue of issues) {
+              await github.rest.issues.update({owner: context.repo.owner, repo: context.repo.repo, issue_number: issue.number, state: 'closed'});
+            }
+
+      - name: Create failure issue
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = '⚠️ 基礎的医薬品データの自動更新に失敗しました';
+            const body = `自動更新が失敗しました。サイト上の既存データは上書きされていません。\n\n実行結果: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const {data: issues} = await github.rest.issues.listForRepo({owner: context.repo.owner, repo: context.repo.repo, state: 'open'});
+            if (!issues.some(issue => issue.title === title)) {
+              await github.rest.issues.create({owner: context.repo.owner, repo: context.repo.repo, title, body, labels: ['data-update-failed']});
+            }
