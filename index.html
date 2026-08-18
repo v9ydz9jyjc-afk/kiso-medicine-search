@@ -4,49 +4,141 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#fff8fb">
-  <meta name="description" content="【2026年・令和8年 最新】厚生労働省の基礎的医薬品対象品目リストを、商品名・成分名・メーカー名・規格から検索できる非公式一覧ツール。基礎的リスト掲載有無も確認できます。">
+  <meta name="description" content="【2026年・令和8年 最新版】厚生労働省の公開資料をもとに、基礎的医薬品の一覧・基礎的リスト掲載状況を商品名・成分名・メーカー名・規格から検索できる非公式サイトです。">
   <meta name="keywords" content="基礎的医薬品,2026,令和8年,最新,一覧,リスト,基礎的リスト,検索">
-  <meta name="robots" content="index,follow,max-snippet:-1,max-image-preview:large">
-  <title>基礎的医薬品一覧・検索｜2026年（令和8年）最新版・基礎的リスト</title>
+  <meta name="robots" content="index,follow">
+  <title>基礎的医薬品 2026年・令和8年 最新一覧検索｜きそぷらす</title>
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="decor decor-one" aria-hidden="true">✿</div><div class="decor decor-two" aria-hidden="true">❀</div>
-  <header class="hero"><div class="hero-inner">
-    <div class="logo" aria-hidden="true">🌿</div>
-    <div><p class="eyebrow">厚生労働省公開資料を見やすく</p><h1>基礎的医薬品<br><span>かんたん検索</span></h1><p class="lead">2026年（令和8年）の最新一覧・基礎的リストを、商品名・成分名・メーカー名・規格から検索できます。</p></div>
-  </div></header>
+  <div class="decor decor-one" aria-hidden="true">✿</div>
+  <div class="decor decor-two" aria-hidden="true">❀</div>
+
+  <header class="hero">
+    <div class="hero-inner">
+      <div class="logo" aria-hidden="true">🌿</div>
+      <div>
+        <p class="eyebrow">厚生労働省公開資料を見やすく</p>
+        <h1>きそぷらす</h1>
+        <p class="lead">基礎的医薬品を、商品名・成分名・メーカー名・規格からかんたん検索。</p>
+      </div>
+    </div>
+  </header>
 
   <main>
-    <section class="latest-card" id="latestCard" aria-live="polite">
-      <div class="latest-icon" aria-hidden="true">✓</div>
-      <div><p class="latest-label">LATEST DATA</p><h2 id="latestTitle">最新版データを確認しています…</h2><p id="latestMeta">厚生労働省の公開資料と同期しています。</p></div>
+    <section class="latest-card" aria-labelledby="latest-title">
+      <div class="latest-badge">✓ 最新データ</div>
+      <div>
+        <p class="mini-label">LATEST DATA</p>
+        <h2 id="latest-title">2026年（令和8年） 基礎的医薬品 最新一覧</h2>
+        <p id="latestSummary">最新データを確認しています…</p>
+        <div class="latest-meta" id="latestMeta"></div>
+      </div>
     </section>
 
     <section class="search-panel" aria-labelledby="search-title">
-      <div class="panel-heading"><div><p class="mini-label">SEARCH</p><h2 id="search-title">お薬を検索</h2></div><span class="status-dot" id="healthDot" aria-hidden="true"></span></div>
-      <form id="searchForm" role="search">
-        <label class="sr-only" for="q">医薬品名、成分名、メーカー名、規格</label>
-        <div class="search-box"><span aria-hidden="true">⌕</span><input id="q" type="search" placeholder="例：カロナール、アセトアミノフェン" autocomplete="off" inputmode="search"><button id="clear" type="button" aria-label="検索内容を消す">×</button></div>
-        <div class="filters">
-          <label><span>区分</span><select id="route"><option value="">すべて</option><option value="内用薬">内用薬</option><option value="注射薬">注射薬</option><option value="外用薬">外用薬</option><option value="歯科用薬剤">歯科用薬剤</option></select></label>
-          <label class="check-label"><input id="changeOnly" type="checkbox"><span>基礎的リスト掲載のみ</span></label>
+      <div class="panel-heading">
+        <div>
+          <p class="mini-label">SEARCH</p>
+          <h2 id="search-title">お薬を検索</h2>
         </div>
-        <button class="search-button" type="submit">検索する</button>
-      </form>
-      <div class="data-summary"><p id="status" role="status">データを読み込んでいます…</p><button id="showHelp" type="button" class="text-button">「基礎的リスト」とは？</button></div>
+        <span class="status-dot" id="healthDot" aria-hidden="true"></span>
+      </div>
+
+      <section class="option-section" aria-labelledby="view-mode-title">
+        <div class="option-heading">
+          <h3 id="view-mode-title">表示する情報量</h3>
+          <p>必要な情報量に合わせて選べます。</p>
+        </div>
+        <div class="choice-grid view-grid" role="group" aria-label="表示する情報量">
+          <button type="button" class="choice-card active" id="simpleMode" aria-pressed="true">
+            <span class="choice-title">🌱 かんたん表示</span>
+            <span class="choice-desc">商品名と基礎的リストの掲載状況を中心に、見やすく表示します。</span>
+          </button>
+          <button type="button" class="choice-card" id="detailMode" aria-pressed="false">
+            <span class="choice-title">📋 詳細表示</span>
+            <span class="choice-desc">成分名・規格・メーカー・選定区分・薬価なども表示します。</span>
+          </button>
+        </div>
+      </section>
+
+      <section class="option-section" aria-labelledby="search-scope-title">
+        <div class="option-heading scope-heading">
+          <div>
+            <h3 id="search-scope-title">検索する範囲</h3>
+            <p>「基礎的リスト」への掲載状況で検索範囲を選べます。</p>
+          </div>
+          <button id="showHelp" type="button" class="help-button">基礎的リストとは？</button>
+        </div>
+        <div class="choice-grid scope-grid" role="group" aria-label="検索する範囲">
+          <button type="button" class="choice-card active" id="allScope" aria-pressed="true">
+            <span class="choice-title">基礎的医薬品をすべて検索</span>
+            <span class="choice-desc">基礎的医薬品の対象品目を、基礎的リストへの掲載有無にかかわらず検索します。</span>
+          </button>
+          <button type="button" class="choice-card" id="listedScope" aria-pressed="false">
+            <span class="choice-title">基礎的リストに掲載されている医薬品だけ検索</span>
+            <span class="choice-desc">上記のうち、厚生労働省の「基礎的リスト」にも掲載されている医薬品だけに絞ります。</span>
+          </button>
+        </div>
+      </section>
+
+      <label class="sr-only" for="q">医薬品名、成分名、メーカー名、規格</label>
+      <div class="search-box">
+        <span aria-hidden="true">⌕</span>
+        <input id="q" type="search" placeholder="例：カロナール、アセトアミノフェン" autocomplete="off" inputmode="search">
+        <button id="clear" type="button" aria-label="検索内容を消す">×</button>
+      </div>
+
+      <div class="search-actions">
+        <label class="route-label">
+          <span>剤形区分</span>
+          <select id="route">
+            <option value="">すべて</option>
+            <option value="内用薬">内用薬</option>
+            <option value="注射薬">注射薬</option>
+            <option value="外用薬">外用薬</option>
+            <option value="歯科用薬剤">歯科用薬剤</option>
+          </select>
+        </label>
+        <button id="searchButton" type="button" class="search-button">🔍 検索する</button>
+      </div>
+
+      <div class="data-summary">
+        <p id="status" role="status">データを読み込んでいます…</p>
+      </div>
     </section>
 
     <section id="notice" class="notice hidden" role="alert"></section>
-    <section id="results" class="results" aria-live="polite" aria-busy="true"><div class="start-message"><strong>薬の名前などを入力して「検索する」を押してください。</strong><br>収録されている基礎的医薬品の一覧から探します。</div></section>
+    <section id="results" class="results" aria-live="polite" aria-busy="true"></section>
 
-    <section class="seo-guide" aria-labelledby="list-title"><h2 id="list-title">基礎的医薬品の最新一覧・リストについて</h2><p>このサイトでは、厚生労働省が公開する<strong>基礎的医薬品対象品目リスト</strong>を検索しやすい形で掲載しています。2026年（令和8年）の最新版データに自動更新し、<strong>基礎的リスト</strong>への掲載有無も分けて表示します。</p></section>
-    <section class="guide" id="helpSection"><details><summary>このサイトの見方・注意点</summary><div class="guide-body"><p><strong>「基礎的医薬品」</strong>と、後発医薬品と同様に変更調剤が認められる品目をまとめた<strong>「基礎的リスト」</strong>は別の情報です。本サイトでは分けて表示します。</p><p>本サイトは検索補助のための非公式ツールです。調剤、変更可否、請求その他の最終判断は、最新の厚生労働省資料、通知、レセコン等で確認してください。</p><p>データ更新に異常があった場合は、誤った新データへ置き換えず、直前の正常データを表示し続ける設計です。</p></div></details></section>
+    <section class="guide">
+      <details>
+        <summary>このサイトの見方・注意点</summary>
+        <div class="guide-body">
+          <p><strong>「基礎的医薬品」</strong>と<strong>「基礎的リストへの掲載」</strong>は別の情報です。本サイトでは分けて表示します。</p>
+          <p>本サイトは検索補助のための非公式ツールです。調剤、変更可否、請求その他の最終判断は、最新の厚生労働省資料、通知、レセコン等で確認してください。</p>
+          <p>データ更新に異常があった場合は、誤った新データへ置き換えず、直前の正常データを表示し続ける設計です。</p>
+        </div>
+      </details>
+    </section>
   </main>
 
-  <footer><div class="footer-flower" aria-hidden="true">🌸</div><p id="source">データ情報を読み込んでいます。</p><p>厚生労働省の公開資料を加工して作成した非公式サイトです。</p></footer>
-  <dialog id="helpDialog"><button id="closeHelp" class="dialog-close" type="button" aria-label="閉じる">×</button><h2>「基礎的リスト」とは？</h2><p>基礎的医薬品のうち、基礎的医薬品に指定される前から変更調剤が認められていた品目などを厚生労働省がまとめた一覧です。</p><p><strong>基礎的医薬品であることだけで、変更調剤の可否は判断できません。</strong>必ず最新の公式資料や通知も確認してください。</p></dialog>
+  <footer>
+    <div class="footer-flower" aria-hidden="true">🌸</div>
+    <p id="source">データ情報を読み込んでいます。</p>
+    <p>厚生労働省の公開資料を加工して作成した非公式サイトです。</p>
+  </footer>
+
+  <dialog id="helpDialog">
+    <button id="closeHelp" class="dialog-close" type="button" aria-label="閉じる">×</button>
+    <h2>「基礎的リスト」とは？</h2>
+    <p>「基礎的医薬品対象品目リスト」と「基礎的リスト」は別の資料です。</p>
+    <p>本サイトでは、基礎的医薬品の対象品目について、厚生労働省が公開する<strong>「基礎的リスト」に掲載されているかどうか</strong>を別情報として表示しています。</p>
+    <p><strong>基礎的医薬品であることだけで、変更調剤の可否は判断できません。</strong>調剤・変更可否・請求等の最終判断は、最新の公式資料や通知等をご確認ください。</p>
+  </dialog>
+
   <script src="app.js" defer></script>
-</body></html>
+</body>
+</html>
