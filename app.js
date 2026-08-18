@@ -1,43 +1,191 @@
 'use strict';
-let medicines = [], meta = {}, shown = 30, hasSearched = false;
-const $ = (s) => document.querySelector(s);
-const normalize = (v) => String(v || '').normalize('NFKC').toLowerCase().replace(/[\s・･―ー‐\-（）()「」『』【】\[\]]/g, '');
-const escapeHtml = (v) => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+let medicines = [];
+let meta = {};
+let shown = 30;
+let searched = false;
+let searchState = { query: '', route: '', listedOnly: false };
+let viewMode = 'simple';
+
+const $ = (selector) => document.querySelector(selector);
+const normalize = (value) => String(value || '').normalize('NFKC').toLowerCase().replace(/[\s・･―ー‐\-（）()「」『』【】\[\]]/g, '');
+const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 
 function filteredMedicines() {
-  const query = normalize($('#q').value), route = $('#route').value, changeOnly = $('#changeOnly').checked;
-  return medicines.filter(m => {
-    const haystack = normalize([m.name,m.ingredient,m.company,m.spec].join(' '));
-    return (!route || m.route === route) && (!changeOnly || m.change_listed) && (!query || haystack.includes(query));
+  const query = normalize(searchState.query);
+  return medicines.filter((medicine) => {
+    const haystack = normalize([medicine.name, medicine.ingredient, medicine.company, medicine.spec].join(' '));
+    return (!searchState.route || medicine.route === searchState.route)
+      && (!searchState.listedOnly || medicine.change_listed)
+      && (!query || haystack.includes(query));
   });
 }
-function resultCard(m) {
-  const price = m.price == null ? '' : `<dt>薬価</dt><dd>${Number(m.price).toLocaleString('ja-JP')}円</dd>`;
-  return `<article class="medicine"><h3>${escapeHtml(m.name)}</h3><div class="badges"><span class="badge">✓ 基礎的医薬品</span><span class="badge ${m.change_listed?'listed':'not-listed'}">基礎的リスト：${m.change_listed?'掲載あり':'掲載なし'}</span></div><dl><dt>区分</dt><dd>${escapeHtml(m.route||'—')}</dd><dt>成分名</dt><dd>${escapeHtml(m.ingredient||'—')}</dd><dt>規格</dt><dd>${escapeHtml(m.spec||'—')}</dd><dt>メーカー</dt><dd>${escapeHtml(m.company||'—')}</dd><dt>選定区分</dt><dd>${escapeHtml(m.category||'—')}</dd>${price}</dl></article>`;
+
+function resultCard(medicine) {
+  const listedText = medicine.change_listed ? '掲載あり' : '掲載なし';
+  const simple = `
+    <div class="simple-info">
+      <p><span>基礎的リスト</span><strong class="${medicine.change_listed ? 'yes' : 'no'}">${listedText}</strong></p>
+      <p class="simple-note">${medicine.change_listed
+        ? '厚生労働省の「基礎的リスト」にも掲載されています。'
+        : '基礎的医薬品ですが、「基礎的リスト」への掲載は確認されていません。'}</p>
+    </div>`;
+
+  const price = medicine.price == null ? '<dt>薬価</dt><dd>—</dd>' : `<dt>薬価</dt><dd>${Number(medicine.price).toLocaleString('ja-JP')}円</dd>`;
+  const detail = `
+    <div class="badges">
+      <span class="badge">✓ 基礎的医薬品</span>
+      <span class="badge ${medicine.change_listed ? 'listed' : 'not-listed'}">基礎的リスト：${listedText}</span>
+    </div>
+    <dl>
+      <dt>区分</dt><dd>${escapeHtml(medicine.route || '—')}</dd>
+      <dt>成分名</dt><dd>${escapeHtml(medicine.ingredient || '—')}</dd>
+      <dt>規格</dt><dd>${escapeHtml(medicine.spec || '—')}</dd>
+      <dt>メーカー</dt><dd>${escapeHtml(medicine.company || '—')}</dd>
+      <dt>選定区分</dt><dd>${escapeHtml(medicine.category || '—')}</dd>
+      ${price}
+    </dl>`;
+
+  return `<article class="medicine">
+    <h3>${escapeHtml(medicine.name)}</h3>
+    ${viewMode === 'simple' ? simple : detail}
+  </article>`;
 }
+
 function render() {
-  const results = $('#results'); results.setAttribute('aria-busy','false');
-  if (!hasSearched) { $('#status').textContent = `収録 ${medicines.length.toLocaleString('ja-JP')}件`; results.innerHTML='<div class="start-message"><strong>薬の名前などを入力して「検索する」を押してください。</strong><br>入力途中で結果が動かないので、落ち着いて検索できます。</div>'; return; }
-  const all = filteredMedicines(); $('#status').textContent=`${all.length.toLocaleString('ja-JP')}件見つかりました（収録 ${medicines.length.toLocaleString('ja-JP')}件）`;
-  if (!all.length) { results.innerHTML='<div class="empty"><strong>該当するお薬が見つかりませんでした。</strong><br>商品名の一部・成分名・メーカー名・規格でも試してください。</div>'; return; }
-  results.innerHTML=all.slice(0,shown).map(resultCard).join('')+(all.length>shown?'<button class="more" id="more" type="button">さらに表示</button>':'');
-  $('#more')?.addEventListener('click',()=>{shown+=30;render();});
+  const results = $('#results');
+  results.setAttribute('aria-busy', 'false');
+
+  if (!searched) {
+    $('#status').textContent = `収録 ${medicines.length.toLocaleString('ja-JP')}件。薬品名などを入力して「検索する」を押してください。`;
+    results.innerHTML = '<div class="empty start-message">🔎 商品名・成分名・メーカー名・規格から検索できます。</div>';
+    return;
+  }
+
+  const all = filteredMedicines();
+  const scopeText = searchState.listedOnly ? '・基礎的リスト掲載品のみ' : '';
+  $('#status').textContent = `${all.length.toLocaleString('ja-JP')}件見つかりました${scopeText}（収録 ${medicines.length.toLocaleString('ja-JP')}件）`;
+
+  if (!all.length) {
+    const term = searchState.query ? `「${escapeHtml(searchState.query)}」` : '指定した条件';
+    results.innerHTML = `<div class="empty">${term}に該当するお薬が見つかりませんでした。<br>商品名の一部・成分名・メーカー名・規格でも試してください。</div>`;
+    return;
+  }
+
+  results.innerHTML = all.slice(0, shown).map(resultCard).join('')
+    + (all.length > shown ? '<button class="more" id="more" type="button">さらに表示</button>' : '');
+
+  $('#more')?.addEventListener('click', () => {
+    shown += 30;
+    render();
+  });
 }
-function formatDate(v, dateOnly=false) { if(!v)return'不明'; const d=new Date(v); if(Number.isNaN(d.getTime()))return escapeHtml(v); return dateOnly?d.toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric'}):d.toLocaleString('ja-JP'); }
-async function loadJson(url){const r=await fetch(url,{cache:'no-store'});if(!r.ok)throw new Error(`${url}: ${r.status}`);return r.json();}
-async function init(){try{
-  [medicines,meta]=await Promise.all([loadJson('data/medicines.json'),loadJson('data/meta.json')]);
-  const ok=meta.status==='normal'; $('#healthDot').classList.add(ok?'ok':'warn'); $('#latestCard').classList.add(ok?'is-latest':'is-warning');
-  const applicable=formatDate(meta.applicable_date,true), generated=formatDate(meta.generated_at);
-  $('#latestTitle').textContent=ok?`✓ 最新版｜${meta.dataset_title||'基礎的医薬品対象品目リスト'}`:'更新状況を確認中';
-  $('#latestMeta').textContent=`適用：${applicable} ／ 最終データ更新：${generated} ／ 収録 ${medicines.length.toLocaleString('ja-JP')}件`;
-  $('#source').innerHTML=`対象資料：${escapeHtml(meta.dataset_title||'基礎的医薬品対象品目リスト')}<br>適用：${applicable}　データ生成：${generated}<br><a href="${escapeHtml(meta.source_page_url)}" target="_blank" rel="noopener noreferrer">厚生労働省の公式資料を確認する</a>`;
-  if(!ok){const n=$('#notice');n.classList.remove('hidden');n.textContent='更新状況を確認中です。現在は、直前に正常取得できたデータを表示しています。最終判断は公式資料で確認してください。';}
+
+function performSearch() {
+  searchState.query = $('#q').value.trim();
+  searchState.route = $('#route').value;
+  searched = true;
+  shown = 30;
   render();
-}catch(e){console.error(e);$('#healthDot').classList.add('warn');$('#latestTitle').textContent='データの読み込み状況を確認してください';$('#status').textContent='データを読み込めませんでした。';$('#results').innerHTML='<div class="empty">読み込みに失敗しました。時間をおいて再度お試しください。</div>';}}
-$('#searchForm').addEventListener('submit',e=>{e.preventDefault();hasSearched=true;shown=30;render();$('#results').scrollIntoView({behavior:'smooth',block:'start'});});
-['route','changeOnly'].forEach(id=>$('#'+id).addEventListener('change',()=>{if(hasSearched){shown=30;render();}}));
-$('#q').addEventListener('keydown',e=>{if(e.key==='Escape')$('#clear').click();});
-$('#clear').addEventListener('click',()=>{$('#q').value='';hasSearched=false;shown=30;render();$('#q').focus();});
-const dialog=$('#helpDialog');$('#showHelp').addEventListener('click',()=>dialog.showModal());$('#closeHelp').addEventListener('click',()=>dialog.close());dialog.addEventListener('click',e=>{if(e.target===dialog)dialog.close();});
+}
+
+function setViewMode(mode) {
+  viewMode = mode;
+  const simple = mode === 'simple';
+  $('#simpleMode').classList.toggle('active', simple);
+  $('#detailMode').classList.toggle('active', !simple);
+  $('#simpleMode').setAttribute('aria-pressed', String(simple));
+  $('#detailMode').setAttribute('aria-pressed', String(!simple));
+  if (searched) render();
+}
+
+function setScope(listedOnly) {
+  searchState.listedOnly = listedOnly;
+  $('#allScope').classList.toggle('active', !listedOnly);
+  $('#listedScope').classList.toggle('active', listedOnly);
+  $('#allScope').setAttribute('aria-pressed', String(!listedOnly));
+  $('#listedScope').setAttribute('aria-pressed', String(listedOnly));
+  if (searched) {
+    shown = 30;
+    render();
+  }
+}
+
+function formatDate(value, dateOnly = false) {
+  if (!value) return '不明';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return escapeHtml(value);
+  return dateOnly ? date.toLocaleDateString('ja-JP') : date.toLocaleString('ja-JP');
+}
+
+async function loadJson(url) {
+  const response = await fetch(url, {cache: 'no-store'});
+  if (!response.ok) throw new Error(`${url}: ${response.status}`);
+  return response.json();
+}
+
+async function init() {
+  try {
+    [medicines, meta] = await Promise.all([
+      loadJson('data/medicines.json'),
+      loadJson('data/meta.json')
+    ]);
+
+    $('#healthDot').classList.add(meta.status === 'normal' ? 'ok' : 'warn');
+
+    $('#latestSummary').textContent = meta.dataset_title || '基礎的医薬品対象品目リスト';
+    $('#latestMeta').innerHTML = `
+      <span>適用日：${formatDate(meta.applicable_date, true)}</span>
+      <span>収録：${Number(meta.target_count || medicines.length).toLocaleString('ja-JP')}件</span>
+      <span>データ生成：${formatDate(meta.generated_at)}</span>`;
+
+    $('#source').innerHTML = `対象資料：${escapeHtml(meta.dataset_title || '基礎的医薬品対象品目リスト')}<br>
+      データ生成：${formatDate(meta.generated_at)}<br>
+      <a href="${escapeHtml(meta.source_page_url)}" target="_blank" rel="noopener noreferrer">厚生労働省の公式資料を確認する</a>`;
+
+    if (meta.status !== 'normal') {
+      const notice = $('#notice');
+      notice.classList.remove('hidden');
+      notice.textContent = '更新状況を確認中です。現在は、直前に正常取得できたデータを表示しています。最終判断は公式資料で確認してください。';
+    }
+
+    render();
+  } catch (error) {
+    console.error(error);
+    $('#healthDot').classList.add('warn');
+    $('#latestSummary').textContent = 'データ情報を読み込めませんでした。';
+    $('#status').textContent = 'データを読み込めませんでした。';
+    $('#results').setAttribute('aria-busy', 'false');
+    $('#results').innerHTML = '<div class="empty">読み込みに失敗しました。時間をおいて再度お試しください。<br>急ぎの場合は厚生労働省の公式資料をご確認ください。</div>';
+  }
+}
+
+$('#searchButton').addEventListener('click', performSearch);
+$('#q').addEventListener('keydown', (event) => {
+  if (event.key === 'Enter') performSearch();
+  if (event.key === 'Escape') $('#clear').click();
+});
+$('#route').addEventListener('change', () => {
+  if (searched) performSearch();
+});
+$('#clear').addEventListener('click', () => {
+  $('#q').value = '';
+  searched = false;
+  shown = 30;
+  render();
+  $('#q').focus();
+});
+
+$('#simpleMode').addEventListener('click', () => setViewMode('simple'));
+$('#detailMode').addEventListener('click', () => setViewMode('detail'));
+$('#allScope').addEventListener('click', () => setScope(false));
+$('#listedScope').addEventListener('click', () => setScope(true));
+
+const dialog = $('#helpDialog');
+$('#showHelp').addEventListener('click', () => dialog.showModal());
+$('#closeHelp').addEventListener('click', () => dialog.close());
+dialog.addEventListener('click', (event) => {
+  if (event.target === dialog) dialog.close();
+});
+
 init();
